@@ -2,6 +2,7 @@ package com.unclekostya.motivationapp
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.provider.CalendarContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,11 +24,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +63,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.wear.compose.material.Colors
 import com.unclekostya.motivationapp.ui.theme.MotivationAppTheme
 import kotlinx.coroutines.launch
 
@@ -81,10 +87,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MotivationAppTheme {
+            val systemDark = isSystemInDarkTheme()
+            var isDarkTheme by remember { mutableStateOf(systemDark) }
+            CustomTheme(darkTheme = isDarkTheme) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
+
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
@@ -179,7 +188,12 @@ class MainActivity : ComponentActivity() {
                         LaunchedEffect(Unit) {
                             viewModel.loadQuote()
                         }
-                        NavCont(viewModel = viewModel, navHostController = navController)
+                        NavCont(
+                            viewModel = viewModel,
+                            navHostController = navController,
+                            onToggleTheme =  {isDarkTheme = !isDarkTheme},
+                            isDarkTheme = isDarkTheme
+                        )
                     }
                 }
             }
@@ -212,13 +226,21 @@ class QuoteViewModel(private val repository: QuoteRepository) : ViewModel() {
 }
 
 @Composable
-fun NavCont(viewModel: QuoteViewModel,navHostController: NavHostController) {
+fun NavCont(
+    viewModel: QuoteViewModel,
+    navHostController: NavHostController,
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean
+) {
     NavHost(navController = navHostController, startDestination = "home"){
         composable("home") {
             QuoteApp(viewModel = viewModel)
         }
         composable("settings") {
-            SettingsPage()
+            SettingsPage(
+                onToggleTheme = onToggleTheme,
+                isDarkTheme = isDarkTheme
+            )
         }
         composable("favourites") {
             FavouritesPage()
@@ -226,6 +248,39 @@ fun NavCont(viewModel: QuoteViewModel,navHostController: NavHostController) {
     }
 }
 
+private val LightColors = lightColorScheme(
+    primary = Color(0xFF6200EE),
+    secondary = Color(0xFF03DAC6),
+    tertiary = Color(0xFF018786),
+    background = Color(0xFFFFFFFF),
+    surface = Color(0xFFFFFFFF),
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onBackground = Color.Black,
+    onSurface = Color.Black,
+)
+
+private val DarkColors = darkColorScheme(
+    primary = Color(0xFFBB86FC),
+    secondary = Color(0xFF03DAC6),
+    tertiary = Color(0xFF03DAC6),
+    background = Color(0xFF121212),
+    surface = Color(0xFF121212),
+    onPrimary = Color.Black,
+    onSecondary = Color.Black,
+    onBackground = Color.White,
+    onSurface = Color.White,
+)
+@Composable
+fun CustomTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    MaterialTheme(
+        colorScheme = if (darkTheme) DarkColors else LightColors,
+        content = content
+    )
+}
 @Composable
 fun QuoteApp(
     modifier: Modifier = Modifier,
@@ -233,63 +288,70 @@ fun QuoteApp(
 ){
     val quote by viewModel.quote.observeAsState()
 
-
-    Column(
-        modifier = modifier
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Card(
-           colors = CardDefaults.cardColors(
-               containerColor = MaterialTheme.colorScheme.surfaceVariant,
-           ),
+    CustomTheme {
+        Column(
             modifier = modifier
-                .size(height = 230.dp, width = 360.dp)
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            quote?.let {
-                Text(
-                    text = it.quoteText,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
-                    modifier = modifier
-                        .padding(14.dp)
-                )
-                Text(
-                    text = it.authorName,
-                    textAlign = TextAlign.Left,
-                    fontSize = 18.sp,
-                    fontStyle = FontStyle.Italic,
-                    modifier = modifier
-                    .padding(16.dp))
-            } ?: Text("Loading...")
-        }
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = modifier
-                .padding(top = 12.dp)
-        ) {
-            Button(onClick = {
-                viewModel.loadQuote()
-            }) {
-                Text("Next quote")
-            }
-            Button(
-                onClick = {
-                    ///////////////////////////
-                },
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
                 modifier = modifier
-                    .padding(start = 10.dp)
+                    .size(height = 230.dp, width = 360.dp)
             ) {
-                Text("To favourites!")
+                quote?.let {
+                    Text(
+                        text = it.quoteText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp,
+                        modifier = modifier
+                            .padding(14.dp)
+                    )
+                    Text(
+                        text = it.authorName,
+                        textAlign = TextAlign.Left,
+                        fontSize = 18.sp,
+                        fontStyle = FontStyle.Italic,
+                        modifier = modifier
+                            .padding(16.dp)
+                    )
+                } ?: Text("Loading...")
+            }
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = modifier
+                    .padding(top = 12.dp)
+            ) {
+                Button(onClick = {
+                    viewModel.loadQuote()
+                }) {
+                    Text("Next quote")
+                }
+                Button(
+                    onClick = {
+                        ///////////////////////////
+                    },
+                    modifier = modifier
+                        .padding(start = 10.dp)
+                ) {
+                    Text("To favourites!")
+                }
             }
         }
     }
 }
 
 @Composable
-fun SettingsPage() {
-    var checked by remember { mutableStateOf(true) }
+fun SettingsPage(
+    onToggleTheme: () -> Unit,
+    isDarkTheme: Boolean
+) {
+    var checked by remember { mutableStateOf(isDarkTheme) }
+
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -310,11 +372,13 @@ fun SettingsPage() {
                     modifier = Modifier
                         .padding(24.dp)
                     )
+
                 Switch(
 
                     checked = checked,
                     onCheckedChange = {
                         checked = it
+                        onToggleTheme()
                     },
                     modifier = Modifier
                         .padding(20.dp)
