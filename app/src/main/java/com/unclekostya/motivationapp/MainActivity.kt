@@ -41,6 +41,13 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavController
+import androidx.navigation.NavHost
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.unclekostya.motivationapp.ui.theme.MotivationAppTheme
 import kotlinx.coroutines.launch
 
@@ -54,11 +61,10 @@ class MainActivity : ComponentActivity() {
                     @Suppress("UNCHECKED_CAST")
                     return QuoteViewModel(repository) as T
                 }
-                throw IllegalArgumentException("Unknown ViewModel class")
+                throw IllegalArgumentException("Unknown ViewModel")
             }
         }
     }
-
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +72,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MotivationAppTheme {
+                val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
                 Scaffold(
                     topBar = {
                         CenterAlignedTopAppBar(
@@ -82,9 +91,18 @@ class MainActivity : ComponentActivity() {
                         BottomAppBar(
                             actions = {
                                 IconButton(
-                                    onClick = {},
+                                    onClick = {
+                                        if (currentRoute != "home") {
+                                            navController.navigate("home") {
+                                                popUpTo(navController.graph.startDestinationId) {saveState = true}
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
                                     modifier = Modifier
-                                        .padding(start = 60.dp)
+                                        .padding(start = 60.dp),
+                                    enabled = currentRoute != "home"
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.home_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
@@ -95,9 +113,18 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 IconButton(
-                                    onClick = {},
+                                    onClick = {
+                                        if(currentRoute != "favourites") {
+                                            navController.navigate("favourites") {
+                                                popUpTo(navController.graph.startDestinationId) {saveState = true}
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
                                     modifier = Modifier
-                                        .padding(start = 60.dp)
+                                        .padding(start = 60.dp),
+                                    enabled =  currentRoute != "favourites"
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.star_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
@@ -108,9 +135,18 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                                 IconButton(
-                                    onClick = {},
+                                    onClick = {
+                                        if(currentRoute != "settings") {
+                                            navController.navigate("settings") {
+                                                popUpTo(navController.graph.startDestinationId) {saveState = true}
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
                                     modifier = Modifier
-                                        .padding(start = 60.dp)
+                                        .padding(start = 60.dp),
+                                    enabled = currentRoute != "settings"
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.settings_24dp_e3e3e3_fill0_wght400_grad0_opsz24),
@@ -130,14 +166,16 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .padding(innerPadding)
                     ) {
-                        QuoteApp(viewModel=viewModel)
+                        LaunchedEffect(Unit) {
+                            viewModel.loadQuote()
+                        }
+                        NavCont(viewModel = viewModel, navHostController = navController)
                     }
                 }
             }
         }
     }
 }
-
 
 class QuoteRepository(private val api: QuoteService) {
     suspend fun getQuote(): QuoteResponce? {
@@ -164,15 +202,27 @@ class QuoteViewModel(private val repository: QuoteRepository) : ViewModel() {
 }
 
 @Composable
+fun NavCont(viewModel: QuoteViewModel,navHostController: NavHostController) {
+    NavHost(navController = navHostController, startDestination = "home"){
+        composable("home") {
+            QuoteApp(viewModel = viewModel)
+        }
+        composable("settings") {
+            SettingsPage()
+        }
+        composable("favourites") {
+            FavouritesPage()
+        }
+    }
+}
+
+@Composable
 fun QuoteApp(
     modifier: Modifier = Modifier,
     viewModel: QuoteViewModel
 ){
     val quote by viewModel.quote.observeAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.loadQuote()
-    }
 
     Column(
         modifier = modifier
@@ -216,7 +266,7 @@ fun QuoteApp(
             }
             Button(
                 onClick = {
-
+                    ///////////////////////////
                 },
                 modifier = modifier
                     .padding(start = 10.dp)
@@ -225,4 +275,14 @@ fun QuoteApp(
             }
         }
     }
+}
+
+@Composable
+fun SettingsPage() {
+    Text("Settings")
+}
+
+@Composable
+fun FavouritesPage() {
+    Text("Favourites")
 }
