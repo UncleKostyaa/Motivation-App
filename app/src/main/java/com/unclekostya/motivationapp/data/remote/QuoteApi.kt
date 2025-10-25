@@ -1,13 +1,9 @@
-package com.unclekostya.motivationapp
+package com.unclekostya.motivationapp.data.remote
+
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
 
-interface QuoteService {
-    @GET("random")
-    suspend fun getQuote() : List<QuoteResponce>
-}
 
 object QuoteApi {
     private val retrofit = Retrofit.Builder()
