@@ -11,10 +11,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.unclekostya.motivationapp.data.local.AppDatabase
+import com.unclekostya.motivationapp.data.local.entity.QuoteEntity
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 
 @Composable
-fun QuoteScreen(viewModel: QuoteViewModel) {
+fun QuoteScreen(
+    viewModel: QuoteViewModel,
+    db: AppDatabase
+) {
     val quote by viewModel.quote.collectAsState()
+    val quoteDao = db.quoteDao()
+    val scope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -52,7 +63,18 @@ fun QuoteScreen(viewModel: QuoteViewModel) {
                 }
 
                 Button(
-                    onClick = {},
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            quote?.let {
+                                quoteDao.insertQuote(
+                                    QuoteEntity(
+                                        text = it.text,
+                                        authorName = it.author
+                                    )
+                                )
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .padding(start = 24.dp)
                 ) {

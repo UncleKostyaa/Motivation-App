@@ -23,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph
+import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.unclekostya.motivationapp.R
+import com.unclekostya.motivationapp.data.local.AppDatabase
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +34,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+
             val systemDark = isSystemInDarkTheme()
             var isDarkTheme by remember { mutableStateOf(systemDark) }
 
@@ -41,12 +45,19 @@ class MainActivity : ComponentActivity() {
                 .create(QuoteService::class.java)
 
             val repository = QuoteRepositoryImpl(api)
-            val viewModel = QuoteViewModel(GetRandomQuoteUseCase(repository))
+            val viewModel = remember {
+                QuoteViewModel(GetRandomQuoteUseCase(repository))
+            }
 
 
             val navController = rememberNavController()
             val backStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = backStackEntry?.destination?.route
+
+            val db = Room.databaseBuilder(
+                applicationContext,
+                AppDatabase::class.java, "quote"
+            ).build()
 
             MotivationAppTheme(darkTheme = isDarkTheme) {
                 Scaffold(
@@ -141,7 +152,8 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             modifier = Modifier.padding(innerPadding),
                             isDarkTheme = isDarkTheme,
-                            onToggleTheme = { isDarkTheme = !isDarkTheme }
+                            onToggleTheme = { isDarkTheme = !isDarkTheme },
+                            db = db
                         )
                     }
                 }
